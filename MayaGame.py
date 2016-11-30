@@ -12,6 +12,7 @@ import subprocess
 import threading
 import sys
 import time
+import Queue
 from maya import OpenMaya
 print OpenMaya.MFileIO
 import maya.utils
@@ -20,14 +21,20 @@ class GameThread(threading.Thread):
     Instance = None
     def __init__(self):
         threading.Thread.__init__(self)
+        print "constructor"
         self.curSelection = None
         self.prevTarnsform = None
         self.keepRunning = True
+        self.inputQueue = Queue.Queue()
+        maya.utils.executeDeferred(self.Initialize)
 
+    def Initialize(self):
         self.playerSphere = cmds.polySphere(sx = 10, sy = 10, name = "Player")
+        self.playerX = 0;
+        self.playerY = 0;
 
-
-    def __del__(self):
+    def CleanUp(self):
+        print "Deleting", self.playerSphere
         cmds.delete(self.playerSphere)
 
     def run(self):
@@ -38,23 +45,62 @@ class GameThread(threading.Thread):
         # cmds.showWindow( "pyEnginePropertyWindow" )
         i = 0
         while self.keepRunning:
-            #maya.utils.executeDeferred(DeferredFunc, i, {'frame': i * 3})
+            maya.utils.executeDeferred(self.HandleInput)
             i += 1
             time.sleep(0.1)
 
+        maya.utils.executeDeferred(self.CleanUp)
+
+    def SendInputMessage(self, message):
+        self.inputQueue.put(message)
+
+    def HandleInput(self):
+        while not self.inputQueue.empty():
+            inputString = self.inputQueue.get();
+            functionMap = {"BUTTON_UP":     [self.MovePlayer, 0.0, 1.0],
+                           "BUTTON_DOWN":   [self.MovePlayer, 0.0, -1.0],
+                           "BUTTON_LEFT":   [self.MovePlayer, -1.0, 0.0],
+                           "BUTTON_RIGHT":  [self.MovePlayer, 1.0, 0.0]}
+            t = functionMap[inputString]
+            print t[1:]
+            t[0](t[1:])
+            self.inputQueue.task_done()
+
+    def MovePlayer(self, direction):
+        self.playerX += direction[0]
+        self.playerY += direction[1]
+        cmds.move( self.playerX, self.playerY, 0, self.playerSphere )
+
 
 def CreateGameThread(arg):
-    print "Dbg: Launching Observer thread that will save currently edited script and change selection"
+    print "Dbg: Launching Game thread"
     if GameThread.Instance != None:
         GameThread.Instance.keepRunning = False # stop exisitng thread
+        time.sleep(0.5) # let thread finish cleaning up
     #start new thread
     GameThread.Instance = GameThread()
     GameThread.Instance.start()
+
 def KillGameThread():
-    print "Dbg: Killing Observer thread"
+    print "Dbg: Stopping Game thread"
     if GameThread.Instance != None:
         GameThread.Instance.keepRunning = False # stop exisitng thread
 
+def PushButtonUp(arg):
+    if GameThread.Instance != None:
+        GameThread.Instance.SendInputMessage("BUTTON_UP")
+
+def PushButtonLeft(arg):
+    if GameThread.Instance != None:
+        GameThread.Instance.SendInputMessage("BUTTON_LEFT")
+
+def PushButtonDown(arg):
+    if GameThread.Instance != None:
+        GameThread.Instance.SendInputMessage("BUTTON_DOWN")
+
+def PushButtonRight(arg):
+    if GameThread.Instance != None:
+        GameThread.Instance.SendInputMessage("BUTTON_RIGHT")
 
 def LoaderAddObject(arg):
     p = cmds.textScrollList('packages', query = True, selectItem = True)
@@ -122,17 +168,19 @@ def ControlsUI():
 
     cmds.columnLayout( adjustableColumn=False, columnOffset=("both", 4) )
 
-
-    cmds.rowLayout(numberOfColumns=2, columnWidth=[(1,200), (2, 200)], columnAlign2=('left', 'left'))
-    cmds.text( 'label_select_package', label="Select Package", width = 100)
-    cmds.setParent( ".." )
-
     cmds.button( "restart_btn", label="Restart Game", enable = 1, command=CreateGameThread, align="center", width = 150 )
 
-    cmds.rowLayout(numberOfColumns=2, columnWidth=[(1,200), (2, 200)], columnAlign2=('left', 'left'))
-    cmds.textField( "editor", width = 100)
-    cmds.checkBox( 'debug_output_chkbx', label = "Debug Output", changeCommand = DebugOutputChange)
-    cmds.setParent( ".." )
+    cmds.rowLayout(numberOfColumns=3, columnWidth=[(1,50), (2, 50), (3, 50)], columnAlign3=('center', 'center', 'center'))
+    cmds.canvas();
+    cmds.button( "up_btn", label="Up", enable = 1, command=PushButtonUp, align="center", width = 50 )
+    cmds.canvas();
+    cmds.setParent("..");
+
+    cmds.rowLayout(numberOfColumns=3, columnWidth=[(1,50), (2, 50), (3, 50)], columnAlign3=('center', 'center', 'center'))
+    cmds.button( "left_btn", label="Left", enable = 1, command=PushButtonLeft, align="center", width = 50 )
+    cmds.button( "down_btn", label="Down", enable = 1, command=PushButtonDown, align="center", width = 50 )
+    cmds.button( "right_btn", label="Right", enable = 1, command=PushButtonRight, align="center", width = 50 )
+    cmds.setParent("..");
 
     cmds.showWindow( "MayaGameControlsUI" )
 
