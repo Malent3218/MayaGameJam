@@ -25,7 +25,7 @@ global proc shelf_MayaGame () {
         -style "iconOnly"
         -marginWidth 1
         -marginHeight 1
-        -command "try:\r\n    MayaGame.KillGameThread()\r\nexcept:\r\n    pass\r\nimport MayaGame\r\nMayaGame = reload(MayaGame)\r\nMayaGame.ControlsUI()\r\n"
+        -command "try:\r\n    MayaGame.KillGameThread(False)\r\nexcept:\r\n    pass\r\nimport MayaGame\r\nMayaGame = reload(MayaGame)\r\nMayaGame.ControlsUI()\r\nMayaGame.SetHotKeys()\r\n"
         -sourceType "python"
         -actionIsSubstitute 0
         -commandRepeatable 1
