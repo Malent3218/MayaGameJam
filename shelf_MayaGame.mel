@@ -1,0 +1,34 @@
+global proc shelf_MayaGame () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+
+        -manage 1
+        -visible 1
+        -preventOverride 0
+
+        -align "center"
+        -label "MayaGame"
+        -labelOffset 0
+        -font "tinyBoldLabelFont"
+        -imageOverlayLabel "Level"
+
+
+        -image "maya_game_icon.bmp"
+        -image1 "maya_game_icon.bmp"
+        -style "iconOnly"
+        -marginWidth 1
+        -marginHeight 1
+        -command "try:\r\n    MayaGame.KillGameThread()\r\nexcept:\r\n    pass\r\nimport MayaGame\r\nMayaGame = reload(MayaGame)\r\nMayaGame.ControlsUI()\r\n"
+        -sourceType "python"
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+
+}
